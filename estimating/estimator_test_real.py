@@ -83,6 +83,7 @@ def main():
 
     testSet = RealDataset(opt=args, dataroot=dataroot)
     testLoader = DataLoader(testSet, batch_size=args.batch_size, shuffle=False, num_workers=args.num_loader, drop_last=False)
+    assert len(testSet) > 0, f"No data found in {dataroot}. Check dataroot path: {os.path.exists(dataroot)}"
 
     all_dict = {}
     all_dict["all"] = {}
