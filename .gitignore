@@ -3,3 +3,5 @@
 .idea/
 data/
 pretrained_model/
+result/
+__pycache__
