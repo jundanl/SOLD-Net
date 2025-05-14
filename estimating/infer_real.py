@@ -6,7 +6,8 @@ import imageio
 import torch
 import numpy as np
 from tqdm import tqdm
-from data.dataset_real import RealDataset
+# from data.dataset_real import RealDataset
+from data.dataset_folder import FolderDataset
 from torch.utils.data import DataLoader
 
 from model.Estimator import SplitLightEstimator
@@ -34,7 +35,7 @@ parser.add_argument("--log_image", action="store_true", help="use image in log s
 parser.add_argument("--log_mu", type=float, default=16.0)
 parser.add_argument("--load_estimator_path", type=str, required=True)
 
-parser.add_argument("--batch_size", type=int, required=True)
+parser.add_argument("--batch_size", type=int, default=1)
 
 parser.add_argument("--tmo_gamma", type=float, default=2.2)
 parser.add_argument("--tmo_log_exposure", type=float, default=-2)
@@ -81,7 +82,7 @@ def main():
 
     print("output path: ", output_dir)
 
-    testSet = RealDataset(opt=args, dataroot=dataroot)
+    testSet = FolderDataset(opt=args, dataroot=dataroot)
     testLoader = DataLoader(testSet, batch_size=args.batch_size, shuffle=False, num_workers=args.num_loader, drop_last=False)
     assert len(testSet) > 0, f"No data found in {dataroot}. Check dataroot path: {os.path.exists(dataroot)}"
 
