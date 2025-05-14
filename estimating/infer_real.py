@@ -72,12 +72,12 @@ def main():
     print('loading estimator from ', args.load_estimator_path)
     estimator.load_state_dict(torch.load(args.load_estimator_path, map_location='cuda'))
     estimator.eval()
-    MSE = torch.nn.MSELoss(reduction='mean')
-    MAE = torch.nn.L1Loss(reduction='mean')
-    BCE = torch.nn.BCELoss(reduction='mean')
-    CE = torch.nn.CrossEntropyLoss(reduction='mean')
-    COS = CosineSimilarity()
-    NNLL = NormalNLLLoss()
+    # MSE = torch.nn.MSELoss(reduction='mean')
+    # MAE = torch.nn.L1Loss(reduction='mean')
+    # BCE = torch.nn.BCELoss(reduction='mean')
+    # CE = torch.nn.CrossEntropyLoss(reduction='mean')
+    # COS = CosineSimilarity()
+    # NNLL = NormalNLLLoss()
 
     print("output path: ", output_dir)
 
@@ -88,26 +88,26 @@ def main():
     all_dict = {}
     all_dict["all"] = {}
     all_dict["stat"] = {}
-    mse_list = []
-    mae_list = []
-    rmse_list = []
-    ssim_list = []
-    ldr_mse_list = []
-    ldr_mae_list = []
-    ldr_rmse_list = []
-    ldr_ssim_list = []
-    az = []
-    el = []
+    # mse_list = []
+    # mae_list = []
+    # rmse_list = []
+    # ssim_list = []
+    # ldr_mse_list = []
+    # ldr_mae_list = []
+    # ldr_rmse_list = []
+    # ldr_ssim_list = []
+    # az = []
+    # el = []
 
     with torch.no_grad():
         for i, test_data in enumerate(tqdm(testLoader)):
             iter_start_time = time.time()
             # retrieve the data
             persp_tensor = test_data['color'].to('cuda') # B, 3, 240, 320
-            local_pano = test_data['local_pano'].to('cuda') # B, num_local, 3, 64, 128
+            # local_pano = test_data['local_pano'].to('cuda') # B, num_local, 3, 64, 128
             local_pos = test_data['local_pos'].numpy() # B, num_local, 2
-            sun_vis = test_data['is_sunny'] # B
-            sun_pos = test_data['sun_pos'] # B
+            # sun_vis = test_data['is_sunny'] # B
+            # sun_pos = test_data['sun_pos'] # B
             meta = test_data['meta'] # B
 
             # exposure compensation
@@ -125,8 +125,8 @@ def main():
             local_code_est = estimator.forward_local(patch_feat) # B*num_local, 64
 
             # calcuate azimuth, elevation, pos mask and cosine mask predicts
-            azimuth_deg_gt = (sun_pos[:,0] - 63.5) / 64 * 180
-            elevation_deg_gt = (31.5 - sun_pos[:,1]) / 64 * 180
+            # azimuth_deg_gt = (sun_pos[:,0] - 63.5) / 64 * 180
+            # elevation_deg_gt = (31.5 - sun_pos[:,1]) / 64 * 180
             azimuth_deg_est, elevation_deg_est, pos_est_fine, cosine_mask_fine_est = calc_pos_cos_mask(pos_est, B)
 
             # decode codes to images
@@ -174,7 +174,7 @@ def main():
                 global_est = sky_est*(1-pos_est_fine) + sun_est # B, 3, 32, 128
                 local_est = torch.nn.functional.pad(global_est, (0, 0, 0, 32)).unsqueeze(1)*(1-local_sil_est) + local_app_est*local_sil_est # B, 4, 3, 64, 128
             
-            ldr_local = GammaTMO(local_pano.cpu(), args.tmo_gamma, args.tmo_log_exposure)
+            # ldr_local = GammaTMO(local_pano.cpu(), args.tmo_gamma, args.tmo_log_exposure)
 
             ldr_global_est = GammaTMO(global_est.detach().cpu(), args.tmo_gamma, args.tmo_log_exposure)
             ldr_local_est = GammaTMO(local_est.detach().cpu(), args.tmo_gamma, args.tmo_log_exposure)
@@ -182,50 +182,50 @@ def main():
             # loss stats
             for im_idx in range(B):
                 meta_idx = meta[im_idx]
-                gt_local_sample = local_pano[im_idx] # num_local, 3, 64, 128
+                # gt_local_sample = local_pano[im_idx] # num_local, 3, 64, 128
                 est_local_sample = local_est[im_idx]
-                ldr_gt_local_sample = ldr_local[im_idx]
+                # ldr_gt_local_sample = ldr_local[im_idx]
                 ldr_est_local_sample = ldr_local_est[im_idx]
 
                 persp_sample = persp_tensor[im_idx].cpu().numpy()
                 local_pos_sample = local_pos[im_idx] # num_local, 2
                 persp_sample = persp_sample.transpose(1, 2, 0) # 240, 320, 3
                 persp_loc_vis_sample = cv2.cvtColor((persp_sample*255.0).astype(np.uint8), cv2.COLOR_RGB2BGR)
-                for local_idx in range(gt_local_sample.shape[0]):
-                    if local_pos_sample[local_idx][0] < 0 or local_pos_sample[local_idx][1] < 0:
-                        local_pos_sample[local_idx] = -local_pos_sample[local_idx] - 1
-                    cv2.circle(persp_loc_vis_sample, (int(local_pos_sample[local_idx][1]), int(local_pos_sample[local_idx][0])), 1, colors[local_idx], 4)
+                # for local_idx in range(gt_local_sample.shape[0]):
+                #     if local_pos_sample[local_idx][0] < 0 or local_pos_sample[local_idx][1] < 0:
+                #         local_pos_sample[local_idx] = -local_pos_sample[local_idx] - 1
+                #     cv2.circle(persp_loc_vis_sample, (int(local_pos_sample[local_idx][1]), int(local_pos_sample[local_idx][0])), 1, colors[local_idx], 4)
                 persp_loc_vis_sample = cv2.cvtColor(persp_loc_vis_sample, cv2.COLOR_BGR2RGB) # 240, 320, 3
 
                 tmp_dict = {}
-                for local_idx in range(gt_local_sample.shape[0]):
-                    _tmp_dict = {}
-                    _tmp_dict['MAE'] = mae(gt_local_sample[local_idx], est_local_sample[local_idx]).cpu().item()
-                    _tmp_dict['MSE'] = mse(gt_local_sample[local_idx], est_local_sample[local_idx]).cpu().item()
-                    _tmp_dict['SSIM'] = ssim(gt_local_sample[local_idx:local_idx+1], est_local_sample[local_idx:local_idx+1]).cpu().item()
-                    _tmp_dict['RMSE'] = np.sqrt(_tmp_dict['MSE'])
-                    _tmp_dict['LDR_MAE'] = mae(ldr_gt_local_sample[local_idx], ldr_est_local_sample[local_idx]).cpu().item()
-                    _tmp_dict['LDR_MSE'] = mse(ldr_gt_local_sample[local_idx], ldr_est_local_sample[local_idx]).cpu().item()
-                    _tmp_dict['LDR_SSIM'] = ssim(ldr_gt_local_sample[local_idx:local_idx+1], ldr_est_local_sample[local_idx:local_idx+1]).cpu().item()
-                    _tmp_dict['LDR_RMSE'] = np.sqrt(_tmp_dict['LDR_MSE'])
-                    tmp_dict[local_idx] = _tmp_dict
-                    mae_list.append(_tmp_dict['MAE'])
-                    mse_list.append(_tmp_dict['MSE'])
-                    rmse_list.append(_tmp_dict['RMSE'])
-                    ssim_list.append(_tmp_dict['SSIM'])
-                    ldr_mae_list.append(_tmp_dict['LDR_MAE'])
-                    ldr_mse_list.append(_tmp_dict['LDR_MSE'])
-                    ldr_rmse_list.append(_tmp_dict['LDR_RMSE'])
-                    ldr_ssim_list.append(_tmp_dict['LDR_SSIM'])
+                for local_idx in range(est_local_sample.shape[0]):
+                    # _tmp_dict = {}
+                    # _tmp_dict['MAE'] = mae(gt_local_sample[local_idx], est_local_sample[local_idx]).cpu().item()
+                    # _tmp_dict['MSE'] = mse(gt_local_sample[local_idx], est_local_sample[local_idx]).cpu().item()
+                    # _tmp_dict['SSIM'] = ssim(gt_local_sample[local_idx:local_idx+1], est_local_sample[local_idx:local_idx+1]).cpu().item()
+                    # _tmp_dict['RMSE'] = np.sqrt(_tmp_dict['MSE'])
+                    # _tmp_dict['LDR_MAE'] = mae(ldr_gt_local_sample[local_idx], ldr_est_local_sample[local_idx]).cpu().item()
+                    # _tmp_dict['LDR_MSE'] = mse(ldr_gt_local_sample[local_idx], ldr_est_local_sample[local_idx]).cpu().item()
+                    # _tmp_dict['LDR_SSIM'] = ssim(ldr_gt_local_sample[local_idx:local_idx+1], ldr_est_local_sample[local_idx:local_idx+1]).cpu().item()
+                    # _tmp_dict['LDR_RMSE'] = np.sqrt(_tmp_dict['LDR_MSE'])
+                    # tmp_dict[local_idx] = _tmp_dict
+                    # mae_list.append(_tmp_dict['MAE'])
+                    # mse_list.append(_tmp_dict['MSE'])
+                    # rmse_list.append(_tmp_dict['RMSE'])
+                    # ssim_list.append(_tmp_dict['SSIM'])
+                    # ldr_mae_list.append(_tmp_dict['LDR_MAE'])
+                    # ldr_mse_list.append(_tmp_dict['LDR_MSE'])
+                    # ldr_rmse_list.append(_tmp_dict['LDR_RMSE'])
+                    # ldr_ssim_list.append(_tmp_dict['LDR_SSIM'])
 
-                    gt_img_path = os.path.join(output_image_dir, '%s_local_%d.hdr' %(meta_idx, local_idx))
+                    # gt_img_path = os.path.join(output_image_dir, '%s_local_%d.hdr' %(meta_idx, local_idx))
                     est_img_path = os.path.join(output_image_dir, '%s_local_%d_est.hdr' %(meta_idx, local_idx))
-                    ldr_gt_img_path = os.path.join(output_image_ldr_dir, '%s_local_%d.png' %(meta_idx, local_idx))
+                    # ldr_gt_img_path = os.path.join(output_image_ldr_dir, '%s_local_%d.png' %(meta_idx, local_idx))
                     ldr_est_img_path = os.path.join(output_image_ldr_dir, '%s_local_%d_est.png' %(meta_idx, local_idx))
 
-                    imageio.imwrite(gt_img_path, np.transpose(gt_local_sample[local_idx].cpu().numpy(), (1, 2, 0)))
+                    # imageio.imwrite(gt_img_path, np.transpose(gt_local_sample[local_idx].cpu().numpy(), (1, 2, 0)))
                     imageio.imwrite(est_img_path, np.transpose(est_local_sample[local_idx].cpu().numpy(), (1, 2, 0)))
-                    imageio.imwrite(ldr_gt_img_path, (np.transpose(ldr_gt_local_sample[local_idx].cpu().numpy(), (1, 2, 0))*255.0).astype(np.uint8))
+                    # imageio.imwrite(ldr_gt_img_path, (np.transpose(ldr_gt_local_sample[local_idx].cpu().numpy(), (1, 2, 0))*255.0).astype(np.uint8))
                     imageio.imwrite(ldr_est_img_path, (np.transpose(ldr_est_local_sample[local_idx].cpu().numpy(), (1, 2, 0))*255.0).astype(np.uint8))
 
                     if args.dump_all:
@@ -245,11 +245,11 @@ def main():
                         imageio.imwrite(local_app_path, np.transpose(local_app_est_hdr, (1, 2, 0)))
                         imageio.imwrite(ldr_local_app_path, (np.transpose(local_app_est_ldr, (1, 2, 0))*255.0).astype(np.uint8))
 
-                if sun_vis[im_idx] == 1:
-                    tmp_dict['az'] = calc_azimuth_error(azimuth_deg_est[im_idx], azimuth_deg_gt[im_idx], unit='deg')
-                    tmp_dict['el'] = elevation_deg_est[im_idx] - elevation_deg_gt[im_idx].cpu().item()
-                    az.append(tmp_dict['az'])
-                    el.append(tmp_dict['el'])
+                # if sun_vis[im_idx] == 1:
+                #     tmp_dict['az'] = calc_azimuth_error(azimuth_deg_est[im_idx], azimuth_deg_gt[im_idx], unit='deg')
+                #     tmp_dict['el'] = elevation_deg_est[im_idx] - elevation_deg_gt[im_idx].cpu().item()
+                #     az.append(tmp_dict['az'])
+                #     el.append(tmp_dict['el'])
 
                 ldr_est_mask_path = os.path.join(output_image_ldr_dir, '%s_mask_est.png' %(meta_idx))
                 persp_pos_vis_path = os.path.join(output_image_ldr_dir, '%s_pos_vis.png' %(meta_idx))
@@ -290,46 +290,46 @@ def main():
 
                 all_dict['all'][meta_idx] = tmp_dict            
 
-    mae_array = np.array(mae_list)
-    mse_array = np.array(mse_list)
-    rmse_array = np.array(rmse_list)
-    ssim_array = np.array(ssim_list)
-    ldr_mae_array = np.array(ldr_mae_list)
-    ldr_mse_array = np.array(ldr_mse_list)
-    ldr_rmse_array = np.array(ldr_rmse_list)
-    ldr_ssim_array = np.array(ldr_ssim_list)
-    az_array = np.array(az)
-    el_array = np.array(el)
-    all_dict['stat']['AVG_MAE'] = mae_array.mean()
-    all_dict['stat']['AVG_MSE'] = mse_array.mean()
-    all_dict['stat']['AVG_RMSE'] = rmse_array.mean()
-    all_dict['stat']['AVG_SSIM'] = ssim_array.mean()
-    all_dict['stat']['AVG_LDR_MAE'] = ldr_mae_array.mean()
-    all_dict['stat']['AVG_LDR_MSE'] = ldr_mse_array.mean()
-    all_dict['stat']['AVG_LDR_RMSE'] = ldr_rmse_array.mean()
-    all_dict['stat']['AVG_LDR_SSIM'] = ldr_ssim_array.mean()
-    all_dict['stat']['AVG_AZ_MAE'] = abs(az_array).mean()
-    all_dict['stat']['AVG_EL_MAE'] = abs(el_array).mean()
-    print("avg_mae: %f, avg_mse: %f, avg_rmse: %f" %(all_dict['stat']['AVG_MAE'], all_dict['stat']['AVG_MSE'], all_dict['stat']['AVG_RMSE']))
-    print("avg_ssim: %f" %(all_dict['stat']['AVG_SSIM']))
-    print("avg_ldr_mae: %f, avg_ldr_mse: %f, avg_ldr_rmse: %f" %(all_dict['stat']['AVG_LDR_MAE'], all_dict['stat']['AVG_LDR_MSE'], all_dict['stat']['AVG_LDR_RMSE']))
-    print("avg_ldr_ssim: %f" %(all_dict['stat']['AVG_LDR_SSIM']))
-    print("avg_az_mae: %f, avg_el_mae: %f" %(all_dict['stat']['AVG_AZ_MAE'], all_dict['stat']['AVG_EL_MAE']))
+    # mae_array = np.array(mae_list)
+    # mse_array = np.array(mse_list)
+    # rmse_array = np.array(rmse_list)
+    # ssim_array = np.array(ssim_list)
+    # ldr_mae_array = np.array(ldr_mae_list)
+    # ldr_mse_array = np.array(ldr_mse_list)
+    # ldr_rmse_array = np.array(ldr_rmse_list)
+    # ldr_ssim_array = np.array(ldr_ssim_list)
+    # az_array = np.array(az)
+    # el_array = np.array(el)
+    # all_dict['stat']['AVG_MAE'] = mae_array.mean()
+    # all_dict['stat']['AVG_MSE'] = mse_array.mean()
+    # all_dict['stat']['AVG_RMSE'] = rmse_array.mean()
+    # all_dict['stat']['AVG_SSIM'] = ssim_array.mean()
+    # all_dict['stat']['AVG_LDR_MAE'] = ldr_mae_array.mean()
+    # all_dict['stat']['AVG_LDR_MSE'] = ldr_mse_array.mean()
+    # all_dict['stat']['AVG_LDR_RMSE'] = ldr_rmse_array.mean()
+    # all_dict['stat']['AVG_LDR_SSIM'] = ldr_ssim_array.mean()
+    # all_dict['stat']['AVG_AZ_MAE'] = abs(az_array).mean()
+    # all_dict['stat']['AVG_EL_MAE'] = abs(el_array).mean()
+    # print("avg_mae: %f, avg_mse: %f, avg_rmse: %f" %(all_dict['stat']['AVG_MAE'], all_dict['stat']['AVG_MSE'], all_dict['stat']['AVG_RMSE']))
+    # print("avg_ssim: %f" %(all_dict['stat']['AVG_SSIM']))
+    # print("avg_ldr_mae: %f, avg_ldr_mse: %f, avg_ldr_rmse: %f" %(all_dict['stat']['AVG_LDR_MAE'], all_dict['stat']['AVG_LDR_MSE'], all_dict['stat']['AVG_LDR_RMSE']))
+    # print("avg_ldr_ssim: %f" %(all_dict['stat']['AVG_LDR_SSIM']))
+    # print("avg_az_mae: %f, avg_el_mae: %f" %(all_dict['stat']['AVG_AZ_MAE'], all_dict['stat']['AVG_EL_MAE']))
 
     with open(os.path.join(output_dir, 'evaluation.json'), 'w') as f:
         f.write(json.dumps(all_dict, indent=2))
 
-    if tb_logger:
-        add_tf_summary_histogram(tb_logger, "Test Real MAE", mae_array)
-        add_tf_summary_histogram(tb_logger, "Test Real MSE", mse_array)
-        add_tf_summary_histogram(tb_logger, "Test Real RMSE", rmse_array)
-        add_tf_summary_histogram(tb_logger, "Test Real SSIM", ssim_array)
-        add_tf_summary_histogram(tb_logger, "Test Real LDR MAE", ldr_mae_array)
-        add_tf_summary_histogram(tb_logger, "Test Real LDR MSE", ldr_mse_array)
-        add_tf_summary_histogram(tb_logger, "Test Real LDR RMSE", ldr_rmse_array)
-        add_tf_summary_histogram(tb_logger, "Test Real LDR SSIM", ldr_ssim_array)
-        add_tf_summary_histogram(tb_logger, "Test Real Solid AZ MAE", az_array)
-        add_tf_summary_histogram(tb_logger, "Test Real Solid EL MAE", el_array)
+    # if tb_logger:
+    #     add_tf_summary_histogram(tb_logger, "Test Real MAE", mae_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real MSE", mse_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real RMSE", rmse_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real SSIM", ssim_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real LDR MAE", ldr_mae_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real LDR MSE", ldr_mse_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real LDR RMSE", ldr_rmse_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real LDR SSIM", ldr_ssim_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real Solid AZ MAE", az_array)
+    #     add_tf_summary_histogram(tb_logger, "Test Real Solid EL MAE", el_array)
 
     print()
     print("All done. Results have been saved to %s" %(output_dir))
