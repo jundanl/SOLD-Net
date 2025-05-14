@@ -1,7 +1,7 @@
 .DS_Store
 */.DS_Store
 .idea/
-data/
+/data/
 pretrained_model/
 result/
 __pycache__
