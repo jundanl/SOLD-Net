@@ -191,10 +191,10 @@ def main():
                 local_pos_sample = local_pos[im_idx] # num_local, 2
                 persp_sample = persp_sample.transpose(1, 2, 0) # 240, 320, 3
                 persp_loc_vis_sample = cv2.cvtColor((persp_sample*255.0).astype(np.uint8), cv2.COLOR_RGB2BGR)
-                # for local_idx in range(gt_local_sample.shape[0]):
-                #     if local_pos_sample[local_idx][0] < 0 or local_pos_sample[local_idx][1] < 0:
-                #         local_pos_sample[local_idx] = -local_pos_sample[local_idx] - 1
-                #     cv2.circle(persp_loc_vis_sample, (int(local_pos_sample[local_idx][1]), int(local_pos_sample[local_idx][0])), 1, colors[local_idx], 4)
+                for local_idx in range(local_pos_sample.shape[0]):
+                    if local_pos_sample[local_idx][0] < 0 or local_pos_sample[local_idx][1] < 0:
+                        local_pos_sample[local_idx] = -local_pos_sample[local_idx] - 1
+                    cv2.circle(persp_loc_vis_sample, (int(local_pos_sample[local_idx][1]), int(local_pos_sample[local_idx][0])), 1, colors[local_idx], 4)
                 persp_loc_vis_sample = cv2.cvtColor(persp_loc_vis_sample, cv2.COLOR_BGR2RGB) # 240, 320, 3
 
                 tmp_dict = {}
