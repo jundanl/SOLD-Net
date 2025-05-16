@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 # from data.dataset_real import RealDataset
 from data.dataset_folder import FolderDataset
+from data.lights_or_dataset import LightSORDataset
 from torch.utils.data import DataLoader
 
 from model.Estimator import SplitLightEstimator
@@ -35,6 +36,7 @@ parser.add_argument("--log_image", action="store_true", help="use image in log s
 parser.add_argument("--log_mu", type=float, default=16.0)
 parser.add_argument("--load_estimator_path", type=str, required=True)
 
+parser.add_argument("--lightsor_dataset", action="store_true", help="test images structured like the LightS_OR dataset")
 parser.add_argument("--batch_size", type=int, default=1)
 
 parser.add_argument("--tmo_gamma", type=float, default=2.2)
@@ -82,7 +84,14 @@ def main():
 
     print("output path: ", output_dir)
 
-    testSet = FolderDataset(opt=args, dataroot=dataroot)
+    if not args.lightsor_dataset:
+        print("Using folder dataset")
+        testSet = FolderDataset(opt=args, dataroot=dataroot)
+    else:
+        print("Using lightsor dataset")
+        testSet = LightSORDataset(dataroot, only_sunlight_scene=False,
+                                  bk_img_size=(240, 320),
+                                  load_information=["scene"])
     testLoader = DataLoader(testSet, batch_size=args.batch_size, shuffle=False, num_workers=args.num_loader, drop_last=False)
     assert len(testSet) > 0, f"No data found in {dataroot}. Check dataroot path: {os.path.exists(dataroot)}"
 

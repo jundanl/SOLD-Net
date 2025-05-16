@@ -77,6 +77,22 @@ def numpy_to_tensor(img):
     return torch.from_numpy(img).contiguous().to(torch.float32)
 
 
+def resize_tensor(x: torch.tensor, size, mode="bilinear"):
+    """
+    Resize tensor x to size.
+    :param x:
+    :param size:
+    :param mode:
+    :return:
+    """
+    if x.ndim == 3:
+        return torch.nn.functional.interpolate(x[None], size, mode=mode, align_corners=True)[0]
+    elif x.ndim == 4:
+        return torch.nn.functional.interpolate(x, size, mode=mode, align_corners=True)
+    else:
+        assert False, f"Invalid tensor shape: {x.shape}"
+
+
 class ImagePostfix:
     input = "input_srgb.png"
     depth = "depth.exr"
@@ -104,6 +120,7 @@ class LightSORDataset(Dataset):
     VALID_DEPTH_RANGE = [0.1, 50.0]
 
     def __init__(self, data_root, only_sunlight_scene,
+                 bk_img_size=None,
                  load_gt_images=[],
                  load_information=[]):
         """
@@ -115,6 +132,7 @@ class LightSORDataset(Dataset):
 
         self.data_root = data_root
         self.only_sunlight_scene = only_sunlight_scene
+        self.bk_img_size = bk_img_size
         self.load_gt_images = [] if load_gt_images is None else load_gt_images
         self.load_information = [] if load_information is None else load_information
         if "object_gt_images" in self.load_information:
@@ -296,4 +314,26 @@ class LightSORDataset(Dataset):
                 image = image / (image ** 2).sum(dim=0, keepdim=True).sqrt().clamp(min=1e-6)  # normalize
                 image = image * valid_normal_mask  # remove invalid normal
             out_dict[f"{type}_image"] = image
-        return out_dict
+
+        # Input for SOLD-Net
+        persp = out_dict["bk_srgb_image"]
+        if self.bk_img_size is not None:
+            persp = resize_tensor(persp, self.bk_img_size, mode="bilinear")
+        soldnet_out_dict = {
+                'color': persp,
+                'local_pos': None,
+                'meta': out_dict["scene_name"]
+            }
+        local_pos_list = []
+        assert "scene" in self.load_information, f"scene information is not loaded, but object location is requested."
+        assert isinstance(object_info, dict), f"object_info should be a dict, but got {type(object_info)}."
+        o_img_h, o_img_w = out_dict["bk_srgb_image"].shape[1:3]
+        t_img_h, t_img_w = persp.shape[1:3]
+        for obj_name in object_info.keys():
+            x, y = object_info[obj_name]["closest_surface_point_2D"]  # (x, y)
+            x = int(x * t_img_w / o_img_w)
+            y = int(y * t_img_h / o_img_h)
+            local_pos_list.append([y, x])
+        local_pos_np = np.stack(local_pos_list, axis=0)  # N x 2
+        soldnet_out_dict["local_pos"] = local_pos_np
+        return soldnet_out_dict
